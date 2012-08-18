@@ -21,6 +21,7 @@
 
 #include "guaca-system.h"
 
+#include <guacamayo-version.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -247,7 +248,7 @@ guaca_system_activated_cb (MxAction *action, GuacaSystem *self)
 
   layout = mx_table_new ();
   mx_table_set_column_spacing (MX_TABLE (layout), 10);
-  mx_table_set_row_spacing (MX_TABLE (layout), 30);
+  mx_table_set_row_spacing (MX_TABLE (layout), 20);
   mx_bin_set_child (MX_BIN (dialog), layout);
 
   label = mx_label_new_with_text (_("System Settings"));
@@ -262,6 +263,11 @@ guaca_system_activated_cb (MxAction *action, GuacaSystem *self)
    */
   mx_widget_set_disabled (MX_WIDGET (entry), TRUE);
   mx_table_insert_actor (MX_TABLE (layout), entry, row++, 1);
+
+  label = mx_label_new_with_text (_("Software:"));
+  mx_table_insert_actor (MX_TABLE (layout), label, row, 0);
+  label = mx_label_new_with_text (GUACAMAYO_DISTRO_STRING);
+  mx_table_insert_actor (MX_TABLE (layout), label, row++, 1);
 
   label = mx_label_new_with_text (_("Processor:"));
   mx_table_insert_actor (MX_TABLE (layout), label, row, 0);
