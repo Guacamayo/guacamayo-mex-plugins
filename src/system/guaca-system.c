@@ -80,32 +80,49 @@ get_system_info (void)
           else if (!info->cpu_model &&
                    !strncmp ("model name", buf, strlen ("model name")))
             {
-              char *p;
+              char *t;
+              int i;
 
-              if ((p = strchr (buf, ':')))
+              struct _subs
+              {
+                const char *match;
+                const char *subst;
+                guint       c_flags;
+                guint       m_flags;
+              } subs[] =
+
                 {
-                  int i = 0;
+                  {"\\s*:\\s*(.*)\n*\r*$",    "\\1", 0, 0},
+                  {"cpu",                     "",    G_REGEX_CASELESS, 0},
+                  {"\\s{2,}",                 " ",   0, 0},
+                  {"\\(R\\)",                 "®",   G_REGEX_CASELESS, 0},
+                  {"\\(C\\)",                 "©",   G_REGEX_CASELESS, 0},
+                  {"\\(TM\\)",                "™",   G_REGEX_CASELESS, 0},
+                };
 
-                  p++;
-                  while (isspace (*p))
-                    p++;
+              t = g_strdup (buf + strlen ("model name"));
+              for (i = 0; i < G_N_ELEMENTS(subs); ++i)
+                {
+                  GRegex     *r;
+                  char       *n;
 
-                  info->cpu_model = g_malloc (strlen (p));
+                  r = g_regex_new (subs[i].match, subs[i].c_flags, 0, NULL);
+                  n = g_regex_replace (r, t, -1, 0,
+                                       subs[i].subst, subs[i].m_flags, NULL);
+                  g_regex_unref (r);
 
-                  while (*p)
+                  if (!n)
                     {
-                      info->cpu_model[i++] = *p;
-
-                      if (isspace (*p))
-                        while (isspace (*p))
-                          p++;
-                      else
-                        p++;
-
-                      if (*p == '\n')
-                        *p = 0;
+                      break;
+                    }
+                  else
+                    {
+                      g_free (t);
+                      t = n;
                     }
                 }
+
+              info->cpu_model = t;
             }
         }
 
