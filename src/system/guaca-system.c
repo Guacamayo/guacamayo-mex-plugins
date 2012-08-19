@@ -35,7 +35,8 @@
 
 struct SystemInfo
 {
-  guint  memory;
+  char  *total_memory;
+  char  *free_memory;
   guint  cores;
   char  *cpu_model;
   char  *hostname;
@@ -43,6 +44,8 @@ struct SystemInfo
 
 free_system_info (struct SystemInfo *info)
 {
+  g_free (info->total_memory);
+  g_free (info->free_memory);
   g_free (info->cpu_model);
   g_free (info->hostname);
   g_slice_free (struct SystemInfo, info);
@@ -61,8 +64,45 @@ get_system_info (void)
         {
           if (!strncmp ("MemTotal:", buf, strlen ("MemTotal:")))
             {
-              info->memory = strtol (buf + strlen ("MemTotal:"), NULL, 10);
-              break;
+              double m  = (double) strtol (buf+strlen ("MemTotal:"), NULL, 10);
+              const char *u = "KB";
+
+              if (m > 1024*1024)
+                {
+                  m /= (1024*1024);
+                  u = "GB";
+                }
+              else if (m > 1024)
+                {
+                  m /= 1024;
+                  u = "MB";
+                }
+
+              info->total_memory = g_strdup_printf ("%.2f %s", m, u);
+
+              if (info->free_memory)
+                break;
+            }
+          else if (!strncmp ("MemFree:", buf, strlen ("MemFree:")))
+            {
+              double m  = (double) strtol (buf+strlen ("MemFree:"), NULL, 10);
+              const char *u = "KB";
+
+              if (m > 1024*1024)
+                {
+                  m /= (1024*1024);
+                  u = "GB";
+                }
+              else if (m > 1024)
+                {
+                  m /= 1024;
+                  u = "MB";
+                }
+
+              info->free_memory = g_strdup_printf ("%.2f %s", m, u);
+
+              if (info->total_memory)
+                break;
             }
         }
 
@@ -300,7 +340,8 @@ guaca_system_activated_cb (MxAction *action, GuacaSystem *self)
 
   label = mx_label_new_with_text (_("Memory:"));
   mx_table_insert_actor (MX_TABLE (layout), label, row, 0);
-  text = g_strdup_printf ("%d MB", info->memory / 1024);
+  text = g_strdup_printf (_("%s (free %s)"),
+                          info->total_memory, info->free_memory);
   label = mx_label_new_with_text (text);
   g_free (text);
   mx_table_insert_actor (MX_TABLE (layout), label, row++, 1);
