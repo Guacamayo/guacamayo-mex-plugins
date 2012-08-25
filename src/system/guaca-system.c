@@ -194,6 +194,9 @@ struct _GuacaSystemPrivate
   ClutterActor *button;
   ClutterActor *dialog;
   ClutterActor *transient_for;
+  ClutterActor *entry;
+
+  char         *hostname;
 
   guint disposed : 1;
 };
@@ -232,6 +235,11 @@ guaca_system_dispose (GObject *object)
 static void
 guaca_system_finalize (GObject *object)
 {
+  GuacaSystem        *self = (GuacaSystem*) object;
+  GuacaSystemPrivate *priv = self->priv;
+
+  g_free (priv->hostname);
+
   G_OBJECT_CLASS (guaca_system_parent_class)->finalize (object);
 }
 
@@ -262,6 +270,25 @@ guaca_system_close_dialog_cb (MxAction *unused, GuacaSystem *self)
 {
   GuacaSystemPrivate *priv = self->priv;
   ClutterActor       *parent;
+  const char         *hostname;
+
+  hostname = mx_entry_get_text (MX_ENTRY (priv->entry));
+  if (hostname && *hostname && g_strcmp0 (hostname, priv->hostname))
+    {
+      GError *error = NULL;
+      char   *cmd   = g_strdup_printf ("guacamayo-hostname %s", hostname);
+
+      /*
+       * Hostname changed, try to set.
+       */
+      if (!g_spawn_command_line_async (cmd, &error))
+        {
+          g_warning ("Failed to execute '%s': %", cmd, error->message);
+          g_clear_error (&error);
+        }
+
+      g_free (cmd);
+    }
 
   parent = clutter_actor_get_parent (priv->dialog);
   clutter_actor_remove_child (parent, priv->dialog);
@@ -314,11 +341,10 @@ guaca_system_activated_cb (MxAction *action, GuacaSystem *self)
 
   label = mx_label_new_with_text (_("Device name:"));
   mx_table_insert_actor (MX_TABLE (layout), label, row, 0);
-  entry = mx_entry_new_with_text (info->hostname);
-  /*
-   * FIXME -- implement changing this.
-   */
-  mx_widget_set_disabled (MX_WIDGET (entry), TRUE);
+  priv->entry = entry = mx_entry_new_with_text (info->hostname);
+  g_free (priv->hostname);
+  priv->hostname = g_strdup (info->hostname);
+
   mx_table_insert_actor (MX_TABLE (layout), entry, row++, 1);
 
   label = mx_label_new_with_text (_("Software:"));
