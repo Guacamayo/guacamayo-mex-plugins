@@ -6,13 +6,7 @@ BUILT_SOURCES =
 EXTRA_DIST =
 CLEANFILES =
 
-AM_CPPFLAGS =			\
-	-I$(top_srcdir)		\
-	$(PLUGINS_CFLAGS)	\
-	$(NULL)
-
-AM_LDFLAGS  = -no-undefined -module -avoid-version
-_libadd     = $(PLUGINS_LIBS)
+AM_CPPFLAGS = -I$(top_srcdir)
 
 plugins_LTLIBRARIES += guaca-system.la
 
@@ -21,5 +15,16 @@ guaca_system_la_SOURCES =	\
 	system/guaca-system.h	\
 	$(NULL)
 
-guaca_system_la_CFLAGS  = -DTHEMEDIR=\"$(pkgdatadir)/\"
-guaca_system_la_LIBADD  = $(_libadd)
+guaca_system_la_CFLAGS = $(PLUGINS_CFLAGS)		\
+			 -DTHEMEDIR=\"$(pkgdatadir)/\"	\
+			 $(NULL)
+
+guaca_system_la_LDFLAGS = -no-undefined -module -avoid-version
+guaca_system_la_LIBADD  = $(PLUGINS_LIBS)
+
+bin_PROGRAMS = guacamayo-hostname
+guacamayo_hostname_SOURCES = system/guaca-hostname.c
+
+# guacamayo-hostname needs to be installed suid
+install-exec-hook:
+	chmod 4755 $(DESTDIR)$(bindir)/guacamayo-hostname
