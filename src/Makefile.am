@@ -28,3 +28,17 @@ guacamayo_hostname_SOURCES = system/guaca-hostname.c
 # guacamayo-hostname needs to be installed suid
 install-exec-hook:
 	chmod 4755 $(DESTDIR)$(bindir)/guacamayo-hostname
+
+plugins_LTLIBRARIES += guaca-clock.la
+
+guaca_clock_la_SOURCES =	\
+	clock/guaca-clock.c	\
+	clock/guaca-clock.h	\
+	$(NULL)
+
+guaca_clock_la_CFLAGS = $(PLUGINS_CFLAGS)		\
+			 -DTHEMEDIR=\"$(pkgdatadir)/\"	\
+			 $(NULL)
+
+guaca_clock_la_LDFLAGS = -no-undefined -module -avoid-version
+guaca_clock_la_LIBADD  = $(PLUGINS_LIBS)
