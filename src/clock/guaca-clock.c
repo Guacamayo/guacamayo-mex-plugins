@@ -34,6 +34,9 @@
 #include <mex/mex.h>
 #include <mex/mex-info-bar-component.h>
 
+#ifndef HAVE_MX_COMBO_BOX_POPULATE
+#error You need mx-combo-box-populate.patch from Guacamayo
+#endif
 
 static void mex_info_bar_component_iface_init (MexInfoBarComponentIface *iface);
 static void guaca_clock_dispose (GObject *object);
@@ -145,7 +148,7 @@ guaca_clock_get_zones (GuacaClock *self)
   if (!(f = fopen ("/usr/share/zoneinfo/zone.tab", "r")))
     {
       g_warning ("Failed to open zone.tab: %s", strerror (errno));
-      return NULL;
+      return;
     }
 
   while (fgets (buf, sizeof (buf), f))
@@ -376,6 +379,7 @@ guaca_clock_regions_index_cb (MxComboBox *combo,
   char              *region;
   const char        *city = NULL;
   gboolean           orig_region = FALSE;
+  GArray            *cities;
 
   if (((idx = mx_combo_box_get_index (combo)) < 0) ||
       !(text = mx_combo_box_get_active_text (combo)))
@@ -405,6 +409,8 @@ guaca_clock_regions_index_cb (MxComboBox *combo,
   mx_combo_box_remove_all (MX_COMBO_BOX (priv->city_combo));
   idx = -1;
 
+  cities = g_array_sized_new (TRUE, FALSE, sizeof (char *), 150);
+
   for (i = 0; l; l = l->next, i++)
     {
       TzEntry *e = l->data;
@@ -412,8 +418,14 @@ guaca_clock_regions_index_cb (MxComboBox *combo,
       if (orig_region && !g_strcmp0 (e->city, city))
         idx = i;
 
-      mx_combo_box_append_text (MX_COMBO_BOX (priv->city_combo), e->city);
+      g_array_append_val (cities, e->city);
     }
+
+  if (cities->len)
+    mx_combo_box_populate (MX_COMBO_BOX (priv->city_combo),
+                           (const char **)cities->data);
+
+  g_array_unref (cities);
 
   if (idx >= 0)
     mx_combo_box_set_index (MX_COMBO_BOX (priv->city_combo), idx);
@@ -433,6 +445,7 @@ guaca_clock_activated_cb (MxAction *action, GuacaClock *self)
   char              *text;
   int                row = 0;
   GList             *l, *keys;
+  GArray            *regions;
   FILE              *f;
   char               buf[512];
 
@@ -483,12 +496,20 @@ guaca_clock_activated_cb (MxAction *action, GuacaClock *self)
   keys = g_hash_table_get_keys (priv->regions);
   keys = g_list_sort (keys, g_strcmp0);
 
+  regions = g_array_sized_new (TRUE, FALSE, sizeof (char *), 15);
+
   for (l = keys; l; l = l->next)
     {
       const char *region = l->data;
 
-      mx_combo_box_append_text (MX_COMBO_BOX (priv->regions_combo), region);
+      g_array_append_val (regions, region);
     }
+
+  if (regions->len)
+    mx_combo_box_populate (MX_COMBO_BOX (priv->regions_combo),
+                           (const char **)regions->data);
+
+  g_array_unref (regions);
 
   /*
    * Only now that the regions combo is populated we connect to the index
