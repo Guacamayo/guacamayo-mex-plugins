@@ -326,24 +326,16 @@ guaca_clock_close_dialog_cb (MxAction *unused, GuacaClock *self)
   if ((zone = guaca_clock_get_current_zone (self)) &&
       g_strcmp0 (zone, priv->orig_zone))
     {
-      FILE *f;
-      char *p;
+      GError *error = NULL;
+      char   *cmd   = g_strdup_printf ("guacamayo-timezone %s", zone);
 
-      /* zone change */
-      if ((f = fopen ("/etc/timezone", "w")))
+      if (!g_spawn_command_line_async (cmd, &error))
         {
-          fputs (zone, f);
-          fclose (f);
+          g_warning ("Failed to execute '%s': %s", cmd, error->message);
+          g_clear_error (&error);
         }
-      else
-        g_warning ("Failed to open /etc/timezone: %s", strerror (errno));
 
-      if (unlink ("/etc/localtime"))
-        g_warning ("Failed to unlink localtime: %s", strerror (errno));
-
-      p = g_build_filename ("/usr/share/zoneinfo", zone, NULL);
-      if (symlink (p, "/etc/localtime"))
-        g_warning ("Failed to symlink local time: %s", strerror (errno));
+      g_free (cmd);
     }
 
   parent = clutter_actor_get_parent (priv->dialog);
