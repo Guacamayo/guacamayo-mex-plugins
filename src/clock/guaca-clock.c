@@ -318,11 +318,23 @@ guaca_clock_get_current_zone (GuacaClock *self)
   return NULL;
 }
 
+static void
+guaca_clock_dialog_mapped_cb (ClutterActor *dialog,
+                              GParamSpec   *pspec,
+                              GuacaClock   *self)
+{
+  GuacaClockPrivate *priv = self->priv;
+  ClutterActor      *parent;
+
+  parent = clutter_actor_get_parent (priv->dialog);
+  clutter_actor_remove_child (parent, priv->dialog);
+  priv->dialog = NULL;
+}
+
 static gboolean
 guaca_clock_close_dialog_cb (MxAction *unused, GuacaClock *self)
 {
   GuacaClockPrivate *priv = self->priv;
-  ClutterActor      *parent;
   const char        *zone;
 
   if ((zone = guaca_clock_get_current_zone (self)) &&
@@ -340,10 +352,17 @@ guaca_clock_close_dialog_cb (MxAction *unused, GuacaClock *self)
       g_free (cmd);
     }
 
-  parent = clutter_actor_get_parent (priv->dialog);
-  clutter_actor_remove_child (parent, priv->dialog);
-  priv->dialog = NULL;
-
+  /*
+   * Hide the dialog, this will trigger the default transition; once it is
+   * no longer visible, destroy it.
+   *
+   * We have to use the mapped property here; MxDialog runs custom animation
+   * using a timeline and the 'visible' property is set well before the
+   * animation finishes.
+   */
+  g_signal_connect (priv->dialog, "notify::mapped",
+                    G_CALLBACK (guaca_clock_dialog_mapped_cb), self);
+  clutter_actor_hide (priv->dialog);
   mex_push_focus (MX_FOCUSABLE (priv->button));
 
   return FALSE;

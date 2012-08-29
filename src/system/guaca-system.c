@@ -265,11 +265,23 @@ guaca_system_close_cb (void *dialog, GuacaSystem *self)
   mex_push_focus (MX_FOCUSABLE (priv->button));
 }
 
+static void
+guaca_system_dialog_mapped_cb (ClutterActor *dialog,
+                               GParamSpec   *pspec,
+                               GuacaSystem  *self)
+{
+  GuacaSystemPrivate *priv = self->priv;
+  ClutterActor       *parent;
+
+  parent = clutter_actor_get_parent (priv->dialog);
+  clutter_actor_remove_child (parent, priv->dialog);
+  priv->dialog = NULL;
+}
+
 static gboolean
 guaca_system_close_dialog_cb (MxAction *unused, GuacaSystem *self)
 {
   GuacaSystemPrivate *priv = self->priv;
-  ClutterActor       *parent;
   const char         *hostname;
 
   hostname = mx_entry_get_text (MX_ENTRY (priv->entry));
@@ -290,10 +302,17 @@ guaca_system_close_dialog_cb (MxAction *unused, GuacaSystem *self)
       g_free (cmd);
     }
 
-  parent = clutter_actor_get_parent (priv->dialog);
-  clutter_actor_remove_child (parent, priv->dialog);
-  priv->dialog = NULL;
-
+  /*
+   * Hide the dialog, this will trigger the default transition; once it is
+   * no longer visible, destroy it.
+   *
+   * We have to use the mapped property here; MxDialog runs custom animation
+   * using a timeline and the 'visible' property is set well before the
+   * animation finishes.
+   */
+  g_signal_connect (priv->dialog, "notify::mapped",
+                    G_CALLBACK (guaca_system_dialog_mapped_cb), self);
+  clutter_actor_hide (priv->dialog);
   mex_push_focus (MX_FOCUSABLE (priv->button));
 
   return FALSE;
