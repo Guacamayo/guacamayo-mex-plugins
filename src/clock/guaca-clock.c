@@ -72,7 +72,6 @@ tz_entry_new (const char *country, const char *zone)
 
   if (stat (path, &st) < 0)
     {
-      g_print ("Failed to stat '%s'\n", path);
       g_free (path);
       return NULL;
     }
